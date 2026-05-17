@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Serverless URL Shortener</title>
+
+  <!-- Favicon using emoji as SVG data URI -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>" />
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #FF6B00;
+      --orange-dark: #e05e00;
+      --orange-light: #fff3e8;
+      --white: #ffffff;
+      --bg: #f7f8fc;
+      --card-bg: #ffffff;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+      --radius: 14px;
+      --transition: 0.22s ease;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #FF6B00 0%, #ff9a3c 50%, #ffb347 100%);
+      padding: 72px 24px 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Decorative blobs */
+    .hero::before, .hero::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+      background: #fff;
+    }
+    .hero::before { width: 320px; height: 320px; top: -80px; left: -80px; }
+    .hero::after  { width: 220px; height: 220px; bottom: -60px; right: -40px; }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.5px;
+      position: relative;
+    }
+
+    .hero p {
+      margin-top: 14px;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: rgba(255,255,255,0.88);
+      max-width: 520px;
+      margin-inline: auto;
+      position: relative;
+    }
+
+    /* ── Main content ── */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 680px;
+      margin: -40px auto 0;
+      padding: 0 16px 16px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    /* ── Form ── */
+    .form-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .url-input {
+      flex: 1;
+      min-width: 0;
+      padding: 14px 18px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .url-input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255,107,0,0.12);
+    }
+
+    .url-input::placeholder { color: #adb5bd; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 14px 26px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--orange);
+      color: var(--white);
+      box-shadow: 0 4px 14px rgba(255,107,0,0.35);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--orange-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255,107,0,0.45);
+    }
+
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+    .btn-primary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .btn-copy {
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      background: var(--orange-light);
+      color: var(--orange);
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition);
+    }
+
+    .btn-copy:hover {
+      background: #ffe0c2;
+      transform: translateY(-1px);
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Messages ── */
+    .message {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+    .message.error   { background: #fff0f0; color: #c0392b; border: 1px solid #ffd5d5; }
+    .message.success { background: #f0fff4; color: #1a7a3c; border: 1px solid #b7f0cc; }
+
+    /* ── Result box ── */
+    .result-box {
+      margin-top: 18px;
+      padding: 16px;
+      background: var(--orange-light);
+      border-radius: 10px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .result-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--orange);
+      margin-bottom: 8px;
+    }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .result-link {
+      flex: 1;
+      min-width: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--orange-dark);
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result-link:hover { text-decoration: underline; }
+
+    /* ── Recent links ── */
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    .recent-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      transition: box-shadow var(--transition);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .recent-item:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+
+    .recent-icon {
+      width: 34px; height: 34px;
+      background: var(--orange-light);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .recent-info { flex: 1; min-width: 0; }
+
+    .recent-short {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--orange);
+      text-decoration: none;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .recent-short:hover { text-decoration: underline; }
+
+    .recent-original {
+      font-size: 0.78rem;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 20px 0;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px 16px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    footer span { color: var(--orange); font-weight: 600; }
+
+    /* ── Responsive ── */
+      @media (max-width: 480px) {
+        .card { padding: 22px 18px; }
+        .form-group { flex-direction: column; }
+        .btn-primary { width: 100%; justify-content: center; }
+      }
+  </style>
+</head>
+<body>
+
+  <!-- ── Hero Section ── -->
+  <header class="hero" role="banner">
+    <h1>🔗 Serverless URL Shortener</h1>
+    <p>Fast, scalable, and built entirely on AWS serverless architecture.</p>
+  </header>
+
+  <!-- ── Main Content ── -->
+  <main>
+
+    <!-- Shortener Card -->
+    <section class="card" aria-label="URL Shortener">
+
+      <form id="shortenForm" novalidate>
+        <div class="form-group">
+          <label for="urlInput" class="sr-only">Enter your long URL</label>
+          <input
+            type="url"
+            id="urlInput"
+            class="url-input"
+            placeholder="Paste your long URL here…"
+            aria-label="Long URL to shorten"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="submit" class="btn btn-primary" id="shortenBtn" aria-label="Shorten URL">
+            <span class="spinner" id="spinner" aria-hidden="true"></span>
+            <span id="btnText">Shorten URL</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Error / Success messages -->
+      <div class="message error"   id="errorMsg"   role="alert"   aria-live="polite"></div>
+      <div class="message success" id="successMsg" role="status"  aria-live="polite"></div>
+
+      <!-- Result box -->
+      <div class="result-box" id="resultBox" aria-label="Shortened URL result">
+        <div class="result-label">Your shortened link</div>
+        <div class="result-row">
+          <a href="#" id="resultLink" class="result-link" target="_blank" rel="noopener noreferrer"></a>
+          <button class="btn-copy" id="copyBtn" aria-label="Copy shortened URL">Copy</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Recent Links Card -->
+    <section class="card" aria-label="Recent shortened links">
+      <div class="section-title">Recent Links</div>
+      <ul class="recent-list" id="recentList" aria-label="List of recently shortened URLs">
+        <li class="empty-state" id="emptyState">No links shortened yet. Try one above!</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer>
+    Built with <span>AWS Lambda</span>, <span>API Gateway</span>, <span>DynamoDB</span>, and <span>S3</span>
+  </footer>
+
+  <script>
+    // ── Configuration ──
+    // Replace with your actual API Gateway base URL (no trailing slash)
+    const API_BASE = 'https://YOUR_API_GATEWAY_URL/prod';
+
+    // ── DOM references ──
+    const form       = document.getElementById('shortenForm');
+    const urlInput   = document.getElementById('urlInput');
+    const shortenBtn = document.getElementById('shortenBtn');
+    const btnText    = document.getElementById('btnText');
+    const spinner    = document.getElementById('spinner');
+    const errorMsg   = document.getElementById('errorMsg');
+    const successMsg = document.getElementById('successMsg');
+    const resultBox  = document.getElementById('resultBox');
+    const resultLink = document.getElementById('resultLink');
+    const copyBtn    = document.getElementById('copyBtn');
+    const recentList = document.getElementById('recentList');
+    const emptyState = document.getElementById('emptyState');
+
+    // In-memory store for recent links (max 5)
+    const recentLinks = [];
+
+    // ── Helpers ──
+
+    /** Show or hide a message element */
+    function showMessage(el, text) {
+      hideMessages();
+      el.textContent = text;
+      el.style.display = 'block';
+    }
+
+    function hideMessages() {
+      errorMsg.style.display   = 'none';
+      successMsg.style.display = 'none';
+    }
+
+    /** Basic URL validation */
+    function isValidUrl(str) {
+      try {
+        const url = new URL(str);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+
+    /** Toggle loading state on the button */
+    function setLoading(loading) {
+      shortenBtn.disabled    = loading;
+      spinner.style.display  = loading ? 'block' : 'none';
+      btnText.textContent    = loading ? 'Shortening…' : 'Shorten URL';
+    }
+
+    /** Add a new entry to the Recent Links list */
+    function addRecentLink(shortUrl, originalUrl) {
+      // Keep max 5 recent links
+      recentLinks.unshift({ shortUrl, originalUrl });
+      if (recentLinks.length > 5) recentLinks.pop();
+
+      // Remove empty state if present
+      if (emptyState) emptyState.remove();
+
+      // Rebuild list
+      recentList.innerHTML = '';
+      recentLinks.forEach(({ shortUrl, originalUrl }) => {
+        const li = document.createElement('li');
+        li.className = 'recent-item';
+        li.innerHTML = `
+          <div class="recent-icon" aria-hidden="true">🔗</div>
+          <div class="recent-info">
+            <a href="${shortUrl}" class="recent-short" target="_blank" rel="noopener noreferrer">${shortUrl}</a>
+            <span class="recent-original" title="${originalUrl}">${originalUrl}</span>
+          </div>
+          <button class="btn-copy" aria-label="Copy ${shortUrl}" onclick="copyText('${shortUrl}', this)">Copy</button>
+        `;
+        recentList.appendChild(li);
+      });
+    }
+
+    /** Copy text to clipboard and give visual feedback */
+    async function copyText(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => { btn.textContent = original; }, 1800);
+      } catch {
+        showMessage(errorMsg, 'Could not copy. Please copy manually.');
+      }
+    }
+
+    // Expose copyText globally (used in inline onclick)
+    window.copyText = copyText;
+
+    // ── Main: Shorten URL ──
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideMessages();
+
+      const rawUrl = urlInput.value.trim();
+
+      // Validate: not empty
+      if (!rawUrl) {
+        showMessage(errorMsg, 'Please enter a URL before shortening.');
+        urlInput.focus();
+        return;
+      }
+
+      // Validate: proper URL format
+      if (!isValidUrl(rawUrl)) {
+        showMessage(errorMsg, 'Please enter a valid URL starting with http:// or https://');
+        urlInput.focus();
+        return;
+      }
+
+      setLoading(true);
+      resultBox.style.display = 'none';
+
+      try {
+        // POST request to API Gateway
+        const response = await fetch(`${API_BASE}/shorten`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: rawUrl }),
+        });
+
+        // Handle non-2xx HTTP responses
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || `Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Expect { short_id: "abc123" }
+        if (!data.short_id) {
+          throw new Error('Unexpected response from server.');
+        }
+
+        // Construct the full short URL
+        const shortUrl = `${API_BASE}/${data.short_id}`;
+
+        // Display result
+        resultLink.href        = shortUrl;
+        resultLink.textContent = shortUrl;
+        resultBox.style.display = 'block';
+
+        showMessage(successMsg, '🎉 URL shortened successfully!');
+
+        // Add to recent links
+        addRecentLink(shortUrl, rawUrl);
+
+        // Clear input
+        urlInput.value = '';
+
+      } catch (err) {
+        // Network or API error
+        showMessage(errorMsg, err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // ── Copy button in result box ──
+    copyBtn.addEventListener('click', () => {
+      copyText(resultLink.href, copyBtn);
+    });
+  </script>
+
+</body>
+</html>
