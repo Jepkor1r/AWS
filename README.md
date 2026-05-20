@@ -3,12 +3,19 @@
 # TL;DR
 - Learning Outcomes!
 ✅ static website hosting
+
 ✅ object storage concepts
+
 ✅ bucket architecture
+
 ✅ frontend deployment
+
 ✅ public vs private permissions
+
 ✅ bucket policy importance
+
 ✅ cloud security defaults
+
 ✅ frontend/backend separation
 
 ## 🎯 Objective
@@ -25,7 +32,9 @@
 
 - a massively scalable distributed object storage system designed for internet-scale applications.
 - S3 stores objects instead of traditional hierarchical file systems.
-- buckets act as global storage containers
+
+- Buckets act as global storage containers
+
 - AWS manages durability, replication, and scalability automatically
 
 - I also learned that frontend applications consisting of (HTML, CSS, JavaScript) can be delivered directly from object storage without requiring a traditional application server.
@@ -45,7 +54,9 @@ index.html
 - This helped me understand:
 
 static hosting architecture
+
 frontend/backend separation
+
 serverless frontend delivery
 
 # ⚡ Key Concepts Learned
@@ -59,8 +70,11 @@ Buckets are globally unique storage containers used to organize objects in S3.
 Files uploaded into S3 become objects containing:
 
 data
+
 metadata
+
 unique object keys
+
 3. Static Website Hosting
 
 S3 can expose frontend files publicly over HTTP, allowing it to function as a lightweight web hosting platform.
@@ -71,15 +85,16 @@ S3 can expose frontend files publicly over HTTP, allowing it to function as a li
 
 - I encountered an:
 
-AccessDenied
-
-error when trying to access my uploaded site.
+AccessDenied - error when trying to access my uploaded site.
 
 - This taught me:
 
 cloud security defaults matter
+
 permissions must be configured intentionally
+
 bucket policies control public accessibility
+
 5. Bucket Policies
 
 To make the frontend publicly accessible, I configured a bucket policy allowing:
@@ -99,6 +114,7 @@ S3 does NOT run application logic.
 S3 only:
 
 stores frontend assets
+
 delivers static files
 
 The browser executes the application.
@@ -106,7 +122,9 @@ The browser executes the application.
 Dynamic business logic belongs to backend services like:
 
 API Gateway
+
 Lambda
+
 DynamoDB
 
 # 🌍 Real-World Relevance
@@ -114,18 +132,27 @@ DynamoDB
 This architecture is commonly used in modern cloud-native systems because it is:
 
 scalable
+
 low-cost
+
 serverless
+
 operationally simple
 
 Large companies use S3 heavily for:
 
 frontend hosting
+
 backups
+
 media storage
+
 analytics pipelines
+
 data lakes
+
 📸 Deployment Outcome
+
 Successful Frontend Deployment
 
 ![Alt text](Images/SuccessfulDeployment.png)
@@ -139,7 +166,9 @@ AccessDenied Learning Moment
 The AccessDenied error helped me understand:
 
 S3 security defaults
+
 public access configuration
+
 bucket policy importance
 
 This became a valuable cloud security lesson rather than just an error.
